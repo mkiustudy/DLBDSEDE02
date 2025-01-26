@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  mongodb: # MongoDB Container for storing the data
+    image: mongo
+    container_name: mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    healthcheck:  # check if the MongoDB is ready
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+
+  mongo-express: # MongoDB Web Interface
+    image: mongo-express
+    container_name: mongodb-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+
+  python-script: #Custom Python Script for loading data into MongoDB
+    build: 
+      context: .
+    container_name: python-mongo-loader
+    restart: on-failure
+    depends_on:
+      mongodb:
+        condition: service_healthy  # Wait for MongoDB to be ready
+    environment:
+      MONGO_URI: "mongodb://root:example@mongodb:27017/"
+
+volumes:
+  mongodb_data:
+  mongodb_config:
